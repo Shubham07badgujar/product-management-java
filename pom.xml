@@ -3,11 +3,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.example</groupId>
-  <artifactId>product-app</artifactId>
+  <artifactId>product-management</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>product-app</name>
+  <name>product-management</name>
   <url>http://maven.apache.org</url>
 
   <properties>
