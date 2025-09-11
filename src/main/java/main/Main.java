@@ -11,6 +11,8 @@ import service.ProductService;
  * Provides a console-based interface for managing products through menu-driven
  * operations
  */
+
+
 public class Main {
     private static ProductService productService = new ProductService();
     private static Scanner scanner = new Scanner(System.in);
