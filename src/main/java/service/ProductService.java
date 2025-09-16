@@ -1,42 +1,82 @@
 package service;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import dao.ProductDao;
+import dao.ProductDaoImpl;
 import model.Product;
 
 public class ProductService {
-    private ArrayList<Product> products = new ArrayList<>();
+    private final ProductDao productDao;
+
+    public ProductService() {
+        this.productDao = new ProductDaoImpl();
+    }
 
     public boolean addProduct(Product product) {
-        if (product == null || searchProductById(product.getId()) != null)
+        if (product == null) {
+            System.err.println("Cannot add null product");
             return false;
-        return products.add(product);
+        }
+
+        if (productDao.existsById(product.getId())) {
+            System.err.println("Product with ID " + product.getId() + " already exists");
+            return false;
+        }
+
+        return productDao.create(product);
     }
 
     public boolean removeProductById(int id) {
-        return products.removeIf(product -> product.getId() == id);
+        if (!productDao.existsById(id)) {
+            System.err.println("Product with ID " + id + " does not exist");
+            return false;
+        }
+
+        return productDao.deleteById(id);
     }
 
     public boolean updateProductQuantity(int id, int newQuantity) {
-        if (newQuantity < 0)
+        if (newQuantity < 0) {
+            System.err.println("Quantity cannot be negative");
             return false;
-        Product product = searchProductById(id);
-        if (product != null) {
-            product.setQuantity(newQuantity);
-            return true;
         }
-        return false;
+
+        if (!productDao.existsById(id)) {
+            System.err.println("Product with ID " + id + " does not exist");
+            return false;
+        }
+
+        return productDao.updateQuantity(id, newQuantity);
     }
 
     public Product searchProductById(int id) {
-        return products.stream()
-                .filter(product -> product.getId() == id)
-                .findFirst()
-                .orElse(null);
+        return productDao.findById(id);
     }
 
     public List<Product> getAllProducts() {
-        return new ArrayList<>(products);
+        return productDao.findAll();
+    }
+
+    public boolean updateProduct(Product product) {
+        if (product == null) {
+            System.err.println("Cannot update null product");
+            return false;
+        }
+
+        if (!productDao.existsById(product.getId())) {
+            System.err.println("Product with ID " + product.getId() + " does not exist");
+            return false;
+        }
+
+        return productDao.update(product);
+    }
+
+    public int getTotalProductCount() {
+        return productDao.getTotalCount();
+    }
+
+    public boolean productExists(int id) {
+        return productDao.existsById(id);
     }
 }

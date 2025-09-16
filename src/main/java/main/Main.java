@@ -5,6 +5,7 @@ import java.util.Scanner;
 
 import model.Product;
 import service.ProductService;
+import util.DBConnection;
 
 public class Main {
     private static final ProductService productService = new ProductService();
@@ -12,8 +13,17 @@ public class Main {
 
     public static void main(String[] args) {
         System.out.println("===== PRODUCT MANAGEMENT SYSTEM =====");
+        System.out.println("Connecting to MySQL database...");
 
-        initializeSampleData();
+        if (!testDatabaseConnection()) {
+            System.err.println("Failed to connect to database. Please check your MySQL configuration.");
+            System.err.println("1. Make sure MySQL server is running");
+            System.err.println("2. Update database.properties with correct credentials");
+            System.err.println("3. Run setup_db.sql to create the database and tables");
+            return;
+        }
+
+        System.out.println("Database connection successful!");
 
         while (true) {
             displayMenu();
@@ -28,7 +38,6 @@ public class Main {
                     case 5 -> removeProduct();
                     case 0 -> {
                         System.out.println("Goodbye!");
-                        scanner.close();
                         return;
                     }
                 }
@@ -146,10 +155,8 @@ public class Main {
         }
     }
 
-    private static void initializeSampleData() {
-        productService.addProduct(new Product(1, "Laptop", 999.99, 5));
-        productService.addProduct(new Product(2, "Mouse", 25.50, 20));
-        productService.addProduct(new Product(3, "Keyboard", 75.00, 10));
+    private static boolean testDatabaseConnection() {
+        return DBConnection.testConnection();
     }
 
     private static int getValidInt(String prompt, int min, int max) {
