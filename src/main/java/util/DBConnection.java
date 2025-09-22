@@ -73,8 +73,11 @@ public class DBConnection {
 
     public static boolean testConnection() {
         try (Connection connection = getConnection()) {
-            System.out.println("Database connection test successful!");
-            return true;
+            if (connection != null && !connection.isClosed()) {
+                System.out.println("Database connection test successful!");
+                return true;
+            }
+            return false;
         } catch (SQLException e) {
             System.err.println("Database connection test failed: " + e.getMessage());
             return false;

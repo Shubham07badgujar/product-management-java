@@ -4,6 +4,9 @@ import java.util.List;
 
 import dao.ProductDao;
 import dao.ProductDaoImpl;
+import exception.DatabaseOperationException;
+import exception.ProductNotFoundException;
+import exception.ProductValidationException;
 import model.Product;
 
 public class ProductService {
@@ -19,21 +22,37 @@ public class ProductService {
             return false;
         }
 
-        if (productDao.existsById(product.getId())) {
-            System.err.println("Product with ID " + product.getId() + " already exists");
+        try {
+            if (productDao.existsById(product.getId())) {
+                System.err.println("Product with ID " + product.getId() + " already exists");
+                return false;
+            }
+
+            return productDao.create(product);
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while adding product: " + e.getMessage());
+            return false;
+        } catch (ProductValidationException e) {
+            System.err.println("Product validation error: " + e.getMessage());
             return false;
         }
-
-        return productDao.create(product);
     }
 
     public boolean removeProductById(int id) {
-        if (!productDao.existsById(id)) {
-            System.err.println("Product with ID " + id + " does not exist");
+        try {
+            if (!productDao.existsById(id)) {
+                System.err.println("Product with ID " + id + " does not exist");
+                return false;
+            }
+
+            return productDao.deleteById(id);
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while removing product: " + e.getMessage());
+            return false;
+        } catch (ProductNotFoundException e) {
+            System.err.println("Product not found: " + e.getMessage());
             return false;
         }
-
-        return productDao.deleteById(id);
     }
 
     public boolean updateProductQuantity(int id, int newQuantity) {
@@ -42,20 +61,44 @@ public class ProductService {
             return false;
         }
 
-        if (!productDao.existsById(id)) {
-            System.err.println("Product with ID " + id + " does not exist");
+        try {
+            if (!productDao.existsById(id)) {
+                System.err.println("Product with ID " + id + " does not exist");
+                return false;
+            }
+
+            return productDao.updateQuantity(id, newQuantity);
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while updating quantity: " + e.getMessage());
+            return false;
+        } catch (ProductNotFoundException e) {
+            System.err.println("Product not found: " + e.getMessage());
+            return false;
+        } catch (ProductValidationException e) {
+            System.err.println("Validation error: " + e.getMessage());
             return false;
         }
-
-        return productDao.updateQuantity(id, newQuantity);
     }
 
     public Product searchProductById(int id) {
-        return productDao.findById(id);
+        try {
+            return productDao.findById(id);
+        } catch (ProductNotFoundException e) {
+            System.err.println("Product not found: " + e.getMessage());
+            return null;
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while searching product: " + e.getMessage());
+            return null;
+        }
     }
 
     public List<Product> getAllProducts() {
-        return productDao.findAll();
+        try {
+            return productDao.findAll();
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while retrieving products: " + e.getMessage());
+            return null;
+        }
     }
 
     public boolean updateProduct(Product product) {
@@ -64,19 +107,40 @@ public class ProductService {
             return false;
         }
 
-        if (!productDao.existsById(product.getId())) {
-            System.err.println("Product with ID " + product.getId() + " does not exist");
+        try {
+            if (!productDao.existsById(product.getId())) {
+                System.err.println("Product with ID " + product.getId() + " does not exist");
+                return false;
+            }
+
+            return productDao.update(product);
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while updating product: " + e.getMessage());
+            return false;
+        } catch (ProductNotFoundException e) {
+            System.err.println("Product not found: " + e.getMessage());
+            return false;
+        } catch (ProductValidationException e) {
+            System.err.println("Validation error: " + e.getMessage());
             return false;
         }
-
-        return productDao.update(product);
     }
 
     public int getTotalProductCount() {
-        return productDao.getTotalCount();
+        try {
+            return productDao.getTotalCount();
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while getting total count: " + e.getMessage());
+            return 0;
+        }
     }
 
     public boolean productExists(int id) {
-        return productDao.existsById(id);
+        try {
+            return productDao.existsById(id);
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while checking product existence: " + e.getMessage());
+            return false;
+        }
     }
 }
