@@ -2,22 +2,27 @@ package dao;
 
 import java.util.List;
 
+import exception.DatabaseOperationException;
+import exception.ProductNotFoundException;
+import exception.ProductValidationException;
 import model.Product;
 
 public interface ProductDao {
-    boolean create(Product product);
+    boolean create(Product product) throws DatabaseOperationException, ProductValidationException;
 
-    Product findById(int id);
+    Product findById(int id) throws ProductNotFoundException, DatabaseOperationException;
 
-    List<Product> findAll();
+    List<Product> findAll() throws DatabaseOperationException;
 
-    boolean update(Product product);
+    boolean update(Product product)
+            throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
 
-    boolean updateQuantity(int id, int quantity);
+    boolean updateQuantity(int id, int quantity)
+            throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
 
-    boolean deleteById(int id);
+    boolean deleteById(int id) throws ProductNotFoundException, DatabaseOperationException;
 
-    boolean existsById(int id);
+    boolean existsById(int id) throws DatabaseOperationException;
 
-    int getTotalCount();
+    int getTotalCount() throws DatabaseOperationException;
 }
