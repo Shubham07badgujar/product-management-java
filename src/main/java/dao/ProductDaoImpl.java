@@ -19,6 +19,7 @@ public class ProductDaoImpl implements ProductDao {
     private static final String DELETE_PRODUCT = "DELETE FROM products WHERE id = ?";
     private static final String EXISTS_BY_ID = "SELECT 1 FROM products WHERE id = ? LIMIT 1";
     private static final String COUNT_PRODUCTS = "SELECT COUNT(*) FROM products";
+    private static final String SELECT_PRODUCTS_BY_NAME = "SELECT id, name, price, quantity FROM products WHERE LOWER(name) LIKE LOWER(?) ORDER BY id";
 
     @Override
     public boolean create(Product product) {
@@ -283,5 +284,36 @@ public class ProductDaoImpl implements ProductDao {
         }
 
         DBConnection.closeConnection(connection);
+    }
+
+    @Override
+    public List<Product> findByName(String name) {
+        List<Product> products = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = DBConnection.getConnection();
+            statement = connection.prepareStatement(SELECT_PRODUCTS_BY_NAME);
+            statement.setString(1, "%" + name + "%");
+            resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                Product product = new Product(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name"),
+                        resultSet.getDouble("price"),
+                        resultSet.getInt("quantity"));
+                products.add(product);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error searching products by name: " + e.getMessage());
+        } finally {
+            closeResources(connection, statement, resultSet);
+        }
+
+        return products;
     }
 }

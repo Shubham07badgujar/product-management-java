@@ -38,7 +38,7 @@ public class Main {
                 switch (choice) {
                     case 1 -> addProduct();
                     case 2 -> viewAllProducts();
-                    case 3 -> searchProductById();
+                    case 3 -> searchProductMenu();
                     case 4 -> updateProductQuantity();
                     case 5 -> removeProduct();
                     case 6 -> generateCSVReport();
@@ -65,7 +65,7 @@ public class Main {
         System.out.println("\n=== MAIN MENU ===");
         System.out.println("1. Add Product");
         System.out.println("2. View All Products");
-        System.out.println("3. Search Product by ID");
+        System.out.println("3. Search Product");
         System.out.println("4. Update Product Quantity");
         System.out.println("5. Remove Product");
         System.out.println("6. Generate CSV Report");
@@ -176,22 +176,70 @@ public class Main {
         }
     }
 
+    private static void searchProductMenu() {
+        System.out.println("\n=== SEARCH PRODUCT ===");
+        System.out.println("1. Search by ID");
+        System.out.println("2. Search by Name");
+        System.out.println("3. Show All Products");
+        System.out.println("0. Back to Main Menu");
+        System.out.println("=====================");
+
+        int choice = getValidInt("Enter your choice: ", 0, 3);
+
+        switch (choice) {
+            case 1 -> searchProductById();
+            case 2 -> searchProductByName();
+            case 3 -> viewAllProducts();
+            case 0 -> System.out.println("Returning to main menu...");
+        }
+    }
+
     private static void searchProductById() {
-        System.out.println("\n--- SEARCH PRODUCT BY ID ---");
+        System.out.println("\n--- SEARCH BY ID ---");
 
         int id = getValidInt("Enter Product ID to search: ", 1, Integer.MAX_VALUE);
         Product product = productService.searchProductById(id);
 
         if (product != null) {
             System.out.println("Product found!");
-            System.out.printf("ID: %d%n", product.getId());
-            System.out.printf("Name: %s%n", product.getName());
-            System.out.printf("Price: $%.2f%n", product.getPrice());
-            System.out.printf("Quantity: %d%n", product.getQuantity());
-            System.out.printf("Total Value: $%.2f%n", product.getTotalValue());
+            displayProductDetails(product);
         } else {
             System.out.println("No product found with ID: " + id);
         }
+    }
+
+    private static void searchProductByName() {
+        System.out.println("\n--- SEARCH BY NAME ---");
+
+        String name = getValidString("Enter product name (or part of name) to search: ");
+        List<Product> products = productService.searchProductsByName(name);
+
+        if (products != null && !products.isEmpty()) {
+            System.out.println("Found " + products.size() + " product(s) matching '" + name + "':");
+            System.out.println("--------------------------------------------------------------------");
+            System.out.printf("%-5s %-20s %-10s %-10s %-15s%n", "ID", "Name", "Price", "Quantity", "Total Value");
+            System.out.println("--------------------------------------------------------------------");
+
+            for (Product product : products) {
+                double totalValue = product.getTotalValue();
+                System.out.printf("%-5d %-20s $%-9.2f %-10d $%-14.2f%n",
+                        product.getId(),
+                        product.getName(),
+                        product.getPrice(),
+                        product.getQuantity(),
+                        totalValue);
+            }
+        } else {
+            System.out.println("No products found matching '" + name + "'");
+        }
+    }
+
+    private static void displayProductDetails(Product product) {
+        System.out.printf("ID: %d%n", product.getId());
+        System.out.printf("Name: %s%n", product.getName());
+        System.out.printf("Price: $%.2f%n", product.getPrice());
+        System.out.printf("Quantity: %d%n", product.getQuantity());
+        System.out.printf("Total Value: $%.2f%n", product.getTotalValue());
     }
 
     private static void updateProductQuantity() {

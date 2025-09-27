@@ -143,4 +143,18 @@ public class ProductService {
             return false;
         }
     }
+
+    public List<Product> searchProductsByName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            System.err.println("Search name cannot be empty");
+            return null;
+        }
+
+        try {
+            return productDao.findByName(name.trim());
+        } catch (DatabaseOperationException e) {
+            System.err.println("Database error while searching products by name: " + e.getMessage());
+            return null;
+        }
+    }
 }

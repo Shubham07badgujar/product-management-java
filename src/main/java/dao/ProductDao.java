@@ -8,21 +8,23 @@ import exception.ProductValidationException;
 import model.Product;
 
 public interface ProductDao {
-    boolean create(Product product) throws DatabaseOperationException, ProductValidationException;
+        boolean create(Product product) throws DatabaseOperationException, ProductValidationException;
 
-    Product findById(int id) throws ProductNotFoundException, DatabaseOperationException;
+        Product findById(int id) throws ProductNotFoundException, DatabaseOperationException;
 
-    List<Product> findAll() throws DatabaseOperationException;
+        List<Product> findAll() throws DatabaseOperationException;
 
-    boolean update(Product product)
-            throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
+        boolean update(Product product)
+                        throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
 
-    boolean updateQuantity(int id, int quantity)
-            throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
+        boolean updateQuantity(int id, int quantity)
+                        throws ProductNotFoundException, DatabaseOperationException, ProductValidationException;
 
-    boolean deleteById(int id) throws ProductNotFoundException, DatabaseOperationException;
+        boolean deleteById(int id) throws ProductNotFoundException, DatabaseOperationException;
 
-    boolean existsById(int id) throws DatabaseOperationException;
+        boolean existsById(int id) throws DatabaseOperationException;
 
-    int getTotalCount() throws DatabaseOperationException;
+        int getTotalCount() throws DatabaseOperationException;
+
+        List<Product> findByName(String name) throws DatabaseOperationException;
 }
