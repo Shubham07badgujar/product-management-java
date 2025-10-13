@@ -5,12 +5,22 @@ public class Product {
     private String name;
     private double price;
     private int quantity;
+    private String category;
 
     public Product(int id, String name, double price, int quantity) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.quantity = quantity;
+        this.category = "General"; // Default category
+    }
+
+    public Product(int id, String name, double price, int quantity, String category) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+        this.category = category != null && !category.trim().isEmpty() ? category : "General";
     }
 
     public int getId() {
@@ -45,6 +55,14 @@ public class Product {
         this.quantity = quantity;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category != null && !category.trim().isEmpty() ? category : "General";
+    }
+
     public double getTotalValue() {
         return price * quantity;
     }
@@ -55,8 +73,10 @@ public class Product {
 
     @Override
     public String toString() {
-        return String.format("Product [ID=%d, Name='%s', Price=%.2f, Quantity=%d, Total Value=%.2f, In Stock=%s]",
-                id, name, price, quantity, getTotalValue(), isInStock() ? "Yes" : "No");
+        return String.format(
+                "📦 Product [🆔 ID=%d, 📝 Name='%s', 💰 Price=$%.2f, 📊 Qty=%d, 🏷️ Category='%s', 💵 Total=$%.2f, %s]",
+                id, name, price, quantity, category, getTotalValue(),
+                isInStock() ? "✅ In Stock" : "❌ Out of Stock");
     }
 
     @Override

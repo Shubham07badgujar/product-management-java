@@ -41,7 +41,7 @@ public class DBConnection {
             Class.forName(driver);
 
             initialized = true;
-            System.out.println("Database configuration loaded successfully");
+            System.out.println("✅ Database configuration loaded successfully");
 
         } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException("Failed to load database configuration: " + e.getMessage(), e);
@@ -56,7 +56,7 @@ public class DBConnection {
             connection.setAutoCommit(false);
             return connection;
         } catch (SQLException e) {
-            System.err.println("Failed to create database connection: " + e.getMessage());
+            System.err.println("❌ Failed to create database connection: " + e.getMessage());
             throw e;
         }
     }
@@ -66,7 +66,7 @@ public class DBConnection {
             try {
                 connection.close();
             } catch (SQLException e) {
-                System.err.println("Error closing database connection: " + e.getMessage());
+                System.err.println("⚠️  Error closing database connection: " + e.getMessage());
             }
         }
     }
@@ -74,12 +74,12 @@ public class DBConnection {
     public static boolean testConnection() {
         try (Connection connection = getConnection()) {
             if (connection != null && !connection.isClosed()) {
-                System.out.println("Database connection test successful!");
+                System.out.println("✅ Database connection test successful!");
                 return true;
             }
             return false;
         } catch (SQLException e) {
-            System.err.println("Database connection test failed: " + e.getMessage());
+            System.err.println("❌ Database connection test failed: " + e.getMessage());
             return false;
         }
     }
@@ -89,7 +89,7 @@ public class DBConnection {
             try {
                 connection.commit();
             } catch (SQLException e) {
-                System.err.println("Error committing transaction: " + e.getMessage());
+                System.err.println("⚠️  Error committing transaction: " + e.getMessage());
             }
         }
     }
@@ -99,7 +99,7 @@ public class DBConnection {
             try {
                 connection.rollback();
             } catch (SQLException e) {
-                System.err.println("Error rolling back transaction: " + e.getMessage());
+                System.err.println("⚠️  Error rolling back transaction: " + e.getMessage());
             }
         }
     }

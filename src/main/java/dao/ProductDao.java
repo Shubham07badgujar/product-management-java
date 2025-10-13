@@ -27,4 +27,8 @@ public interface ProductDao {
         int getTotalCount() throws DatabaseOperationException;
 
         List<Product> findByName(String name) throws DatabaseOperationException;
+
+        List<Product> findByCategory(String category) throws DatabaseOperationException;
+
+        List<Product> findByPriceRange(double minPrice, double maxPrice) throws DatabaseOperationException;
 }

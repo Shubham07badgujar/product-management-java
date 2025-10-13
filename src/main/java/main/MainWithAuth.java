@@ -7,38 +7,32 @@ import java.util.Scanner;
 
 import exception.InvalidInputException;
 import model.Product;
+import model.User;
+import service.AuthService;
 import service.ProductService;
 import util.CSVHelper;
 import util.DBConnection;
 import util.PaginationUtil;
 
 /**
- * Main class for Product Management System
- * Handles console-based user interface and menu operations with pagination su }
- * catch (NumberFormatException e) {
- * System.out.println("❌ Invalid ID format!");
- * } catch (Exception e) {
- * System.err.println("❌ Error: " + e.getMessage());
- * }
- * }
- * 
- * private static void deleteByCategory() {
+ * Main class with Authentication for Product Management System
+ * Handles user registration, login, and role-based menu access
  */
-public class Main {
+public class MainWithAuth {
     private static final ProductService productService = new ProductService();
+    private static final AuthService authService = new AuthService();
     private static final CSVHelper csvHelper = new CSVHelper();
     private static final Scanner scanner = new Scanner(System.in);
+    private static User currentUser = null;
 
     public static void main(String[] args) {
-        // Display startup banner
         displayStartupBanner();
 
         System.out.println("🔗 Connecting to database...");
 
         if (DBConnection.testConnection()) {
-            System.out.println("✅ Database connection successful!");
-            System.out.println("🎉 Welcome to Product Management System! 🎉\n");
-            showMainMenu();
+            System.out.println("✅ Database connection successful!\n");
+            showAuthMenu();
         } else {
             System.out.println("❌ Failed to connect to database. Please check your configuration.");
             System.out.println("📝 Make sure MySQL is running and database exists.");
@@ -50,31 +44,192 @@ public class Main {
     private static void displayStartupBanner() {
         System.out.println("╔══════════════════════════════════════════════════════════════╗");
         System.out.println("║                                                              ║");
-        System.out.println("║    🏪 PRODUCT MANAGEMENT SYSTEM v1.0 🏪                    ║");
+        System.out.println("║    🏪 PRODUCT MANAGEMENT SYSTEM v2.0 🏪                    ║");
         System.out.println("║                                                              ║");
         System.out.println("║    📦 Manage your inventory with ease                       ║");
-        System.out.println("║    🚀 Fast • Reliable • User-Friendly                       ║");
+        System.out.println("║    🚀 Fast • Reliable • Secure                              ║");
         System.out.println("║                                                              ║");
-        System.out.println("║    💡 Features: Add • View • Search • Update • Delete       ║");
-        System.out.println("║    🎯 Advanced: Pagination • Price Filter • Auto CSV Sync   ║");
+        System.out.println("║    🔐 Secure Login • Role-Based Access                      ║");
+        System.out.println("║    💡 Admin & User Roles                                     ║");
         System.out.println("║                                                              ║");
         System.out.println("╚══════════════════════════════════════════════════════════════╝");
         System.out.println();
     }
 
-    private static void showMainMenu() {
+    /**
+     * Display authentication menu (Login/Register)
+     */
+    private static void showAuthMenu() {
         while (true) {
-            System.out.println("\n🏪 ============ PRODUCT MANAGEMENT SYSTEM ============ 🏪");
+            System.out.println("\n🔐 ============ WELCOME ============ 🔐");
+            System.out.println("1️⃣  Register");
+            System.out.println("2️⃣  Login");
+            System.out.println("0️⃣  Exit");
+            System.out.println("=====================================");
+            System.out.print("Choose an option: ");
+
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    registerUser();
+                    break;
+                case "2":
+                    loginUser();
+                    if (currentUser != null) {
+                        // Show appropriate menu based on role
+                        if (currentUser.isAdmin()) {
+                            showAdminMenu();
+                        } else {
+                            showUserMenu();
+                        }
+                        currentUser = null; // Logout after menu exit
+                    }
+                    break;
+                case "0":
+                    System.out.println("👋 Goodbye! Thank you for using Product Management System!");
+                    return;
+                default:
+                    System.out.println("❌ Invalid choice! Please try again.");
+            }
+        }
+    }
+
+    /**
+     * Handle user registration
+     */
+    private static void registerUser() {
+        System.out.println("\n📝 ========== USER REGISTRATION ========== 📝");
+
+        try {
+            System.out.print("👤 First Name: ");
+            String firstName = scanner.nextLine().trim();
+
+            System.out.print("👤 Last Name: ");
+            String lastName = scanner.nextLine().trim();
+
+            System.out.print("📧 Email: ");
+            String email = scanner.nextLine().trim();
+
+            System.out.print("📞 Phone Number: ");
+            String phoneNumber = scanner.nextLine().trim();
+
+            System.out.print("🔒 Password (min 6 characters): ");
+            String password = scanner.nextLine().trim();
+
+            System.out.print("🔒 Confirm Password: ");
+            String confirmPassword = scanner.nextLine().trim();
+
+            if (!password.equals(confirmPassword)) {
+                System.out.println("❌ Passwords do not match!");
+                return;
+            }
+
+            System.out.println("\n🎭 Select Role:");
+            System.out.println("1. 👤 User (View products only)");
+            System.out.println("2. 🛠️ Admin (Full access)");
+            System.out.print("Choose role (1-2): ");
+            String roleChoice = scanner.nextLine().trim();
+
+            String role;
+            if (roleChoice.equals("1")) {
+                role = "User";
+            } else if (roleChoice.equals("2")) {
+                role = "Admin";
+            } else {
+                System.out.println("❌ Invalid role choice! Defaulting to User.");
+                role = "User";
+            }
+
+            User newUser = new User(firstName, lastName, email, phoneNumber, password, role);
+
+            if (authService.registerUser(newUser)) {
+                System.out.println("\n🎉 Registration completed successfully!");
+                System.out.println("📧 You can now login with your email: " + email);
+            }
+
+        } catch (Exception e) {
+            System.out.println("❌ Registration error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle user login
+     */
+    private static void loginUser() {
+        System.out.println("\n🔐 ========== USER LOGIN ========== 🔐");
+
+        try {
+            System.out.print("📧 Email: ");
+            String email = scanner.nextLine().trim();
+
+            System.out.print("🔒 Password: ");
+            String password = scanner.nextLine().trim();
+
+            currentUser = authService.loginUser(email, password);
+
+            if (currentUser != null) {
+                System.out.println("\n✨ Login successful!");
+                System.out.println("👤 Welcome, " + currentUser.getFirstName() + " " + currentUser.getLastName() + "!");
+                System.out.println("🎭 Role: " + currentUser.getRole());
+            }
+
+        } catch (Exception e) {
+            System.out.println("❌ Login error: " + e.getMessage());
+            currentUser = null;
+        }
+    }
+
+    /**
+     * Show User Menu (Limited Access)
+     */
+    private static void showUserMenu() {
+        while (true) {
+            System.out.println("\n👤 ============ USER MENU ============ 👤");
+            System.out.println("1. 👀 View All Products");
+            System.out.println("2. 🔍 Search Product");
+            System.out.println("3. 💰 Filter Products by Price Range");
+            System.out.println("0. 🚪 Exit");
+            System.out.println("=======================================");
+            System.out.print("Choose an option: ");
+
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    viewAllProducts();
+                    break;
+                case "2":
+                    searchProducts();
+                    break;
+                case "3":
+                    filterByPriceRange();
+                    break;
+                case "0":
+                    System.out.println("👋 Logging out...");
+                    return;
+                default:
+                    System.out.println("❌ Invalid choice! Please try again.");
+            }
+        }
+    }
+
+    /**
+     * Show Admin Menu (Full Access)
+     */
+    private static void showAdminMenu() {
+        while (true) {
+            System.out.println("\n🛠️ ============ ADMIN MENU ============ 🛠️");
             System.out.println("1. ➕ Add Product");
             System.out.println("2. 👀 View All Products");
-            System.out.println("3. 🔍 Search Products");
+            System.out.println("3. 🔍 Search Product");
             System.out.println("4. ✏️  Update Product");
             System.out.println("5. 🗑️  Delete Product");
-            System.out.println("6. � Filter by Price Range");
+            System.out.println("6. 💰 Filter by Price Range");
             System.out.println("7. 💾 Save to CSV");
             System.out.println("0. 🚪 Exit");
-            System.out.println("=====================================================");
-            System.out.print("Choose an option (0-7): ");
+            System.out.println("=========================================");
+            System.out.print("Choose an option: ");
 
             String choice = scanner.nextLine().trim();
 
@@ -101,13 +256,15 @@ public class Main {
                     saveToCSV();
                     break;
                 case "0":
-                    System.out.println("👋 Goodbye! Thank you for using Product Management System!");
+                    System.out.println("👋 Logging out...");
                     return;
                 default:
                     System.out.println("❌ Invalid choice! Please try again.");
             }
         }
     }
+
+    // ==================== PRODUCT MANAGEMENT METHODS ====================
 
     private static void viewAllProducts() {
         System.out.println("\n📦 ========== ALL PRODUCTS ========== 📦");
@@ -119,7 +276,6 @@ public class Main {
             return;
         }
 
-        // Check if we should use pagination for large datasets
         if (products.size() > 10) {
             viewProductsWithPagination(products);
         } else {
@@ -131,17 +287,14 @@ public class Main {
         System.out.println("\n📖 Viewing products with pagination (Page navigation available)");
         PaginationUtil<Product> pagination = new PaginationUtil<>(products, 10);
 
-        // Display current page
         displayProductPage(pagination.getCurrentPageData());
 
-        // Show pagination info and navigation
         System.out.printf("\n📊 Page %d of %d | Total items: %d | Items per page: %d%n",
                 pagination.getCurrentPage(),
                 pagination.getTotalPages(),
                 pagination.getTotalItems(),
                 pagination.getPageSize());
 
-        // Navigation menu
         while (true) {
             System.out.println("\n🧭 Navigation Options:");
             System.out.println("  ⏮️  [F] First page");
@@ -197,7 +350,6 @@ public class Main {
                     continue;
             }
 
-            // Show updated pagination info
             System.out.printf("\n📊 Page %d of %d | Total items: %d%n",
                     pagination.getCurrentPage(),
                     pagination.getTotalPages(),
@@ -252,7 +404,7 @@ public class Main {
             System.out.print("🏷️ Category: ");
             String category = scanner.nextLine().trim();
             if (category.isEmpty()) {
-                category = "General"; // Default category
+                category = "General";
             }
 
             Product product = new Product(0, name, price, quantity, category);
@@ -280,7 +432,7 @@ public class Main {
         System.out.println("2. 🏷️ Search by Category");
         System.out.println("3. 🆔 Search by ID");
         System.out.println("0. 🔙 Exit");
-        System.out.print("Choose search type (0-3): ");
+        System.out.print("Choose search type: ");
 
         String choice = scanner.nextLine().trim();
 
@@ -311,7 +463,6 @@ public class Main {
                     return;
             }
 
-            // Handle single product search result (by ID)
             if (singleResult != null) {
                 System.out.println("\n🎯 Product Found:");
                 List<Product> singleList = new ArrayList<>();
@@ -320,7 +471,6 @@ public class Main {
             } else if (results != null && !results.isEmpty()) {
                 System.out.println("\n🎯 Search Results (" + results.size() + " found):");
 
-                // Use pagination for large search results
                 if (results.size() > 10) {
                     viewProductsWithPagination(results);
                 } else {
@@ -357,44 +507,30 @@ public class Main {
             System.out.printf("🏷️ Category: %s%n", product.getCategory());
             System.out.println("\nEnter new values (press Enter to keep current value):");
 
-            // Update name
             String newName = getOptionalString("📦 New Name [" + product.getName() + "]: ");
             if (!newName.isEmpty()) {
                 product.setName(newName);
             }
 
-            // Update price
             String priceInput = getOptionalString("💰 New Price [" + product.getPrice() + "]: ");
             if (!priceInput.isEmpty()) {
                 double newPrice = Double.parseDouble(priceInput);
                 if (newPrice >= 0) {
-                    double currentPrice = product.getPrice();
                     product.setPrice(newPrice);
-                    System.out.printf("💰 Old Price: $%.2f → New Price: $%.2f%n", currentPrice, newPrice);
-                } else {
-                    System.out.println("❌ Price cannot be negative. Keeping current price.");
                 }
             }
 
-            // Update quantity
             String quantityInput = getOptionalString("📊 New Quantity [" + product.getQuantity() + "]: ");
             if (!quantityInput.isEmpty()) {
                 int newQuantity = Integer.parseInt(quantityInput);
                 if (newQuantity >= 0) {
-                    int currentQuantity = product.getQuantity();
                     product.setQuantity(newQuantity);
-                    System.out.printf("📊 Old Quantity: %d → New Quantity: %d%n", currentQuantity, newQuantity);
-                } else {
-                    System.out.println("❌ Quantity cannot be negative. Keeping current quantity.");
                 }
             }
 
-            // Update category
             String newCategory = getOptionalString("🏷️ New Category [" + product.getCategory() + "]: ");
             if (!newCategory.isEmpty()) {
-                String currentCategory = product.getCategory();
                 product.setCategory(newCategory);
-                System.out.printf("🏷️ Old Category: %s → New Category: %s%n", currentCategory, newCategory);
             }
 
             if (productService.updateProduct(product)) {
@@ -422,8 +558,8 @@ public class Main {
         System.out.println("1. 🆔 Delete by ID");
         System.out.println("2. 📦 Delete by Name");
         System.out.println("3. 🏷️ Delete by Category");
-        System.out.println("0. 🔙 Back to Main Menu");
-        System.out.print("Choose delete option (0-3): ");
+        System.out.println("0. 🔙 Back to Menu");
+        System.out.print("Choose delete option: ");
 
         String choice = scanner.nextLine().trim();
 
@@ -563,7 +699,6 @@ public class Main {
 
             System.out.printf("🔍 Found %d products in category '%s':%n", products.size(), category);
 
-            // Use pagination for large category lists
             if (products.size() > 10) {
                 viewProductsWithPagination(products);
             } else {
@@ -574,7 +709,7 @@ public class Main {
             System.out.println("1. 🆔 Delete specific product by ID");
             System.out.println("2. ⚠️  Delete ALL products in this category");
             System.out.println("0. 🔙 Cancel");
-            System.out.print("Choose option (0-2): ");
+            System.out.print("Choose option: ");
 
             String choice = scanner.nextLine().trim();
 
@@ -629,7 +764,8 @@ public class Main {
     }
 
     private static void deleteAllInCategory(List<Product> products, String category) {
-        System.out.printf("⚠️ WARNING: This will delete ALL %d products in category '%s'%n", products.size(), category);
+        System.out.printf("⚠️ WARNING: This will delete ALL %d products in category '%s'%n", products.size(),
+                category);
         System.out.print("⚠️ Type 'DELETE ALL' to confirm or anything else to cancel: ");
         String confirm = scanner.nextLine().trim();
 
@@ -649,7 +785,7 @@ public class Main {
     }
 
     private static void filterByPriceRange() {
-        System.out.println("\n� ========== FILTER BY PRICE RANGE ========== �");
+        System.out.println("\n💰 ========== FILTER BY PRICE RANGE ========== 💰");
 
         try {
             System.out.print("💵 Enter minimum price: $");
@@ -674,7 +810,6 @@ public class Main {
                 System.out.printf("\n🎯 Found %d products in price range $%.2f - $%.2f:%n",
                         results.size(), minPrice, maxPrice);
 
-                // Use pagination for large results
                 if (results.size() > 10) {
                     viewProductsWithPagination(results);
                 } else {
@@ -701,8 +836,7 @@ public class Main {
             }
 
             Path csvPath = Path.of(filePath);
-            // csvHelper.exportToCSV(csvPath.toString());
-            System.out.println("❌ CSV export not implemented yet");
+            csvHelper.syncDatabaseToCSV();
             System.out.println("✅ Products exported to CSV successfully: " + csvPath.toAbsolutePath());
 
         } catch (Exception e) {
