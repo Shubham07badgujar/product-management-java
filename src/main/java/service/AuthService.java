@@ -4,6 +4,7 @@ import dao.UserDao;
 import dao.UserDaoImpl;
 import exception.DatabaseOperationException;
 import exception.UserValidationException;
+import jakarta.mail.MessagingException;
 import model.User;
 
 /**
@@ -12,9 +13,13 @@ import model.User;
  */
 public class AuthService {
     private final UserDao userDao;
+    private final OTPService otpService;
+    private final UserDaoImpl userDaoImpl;
 
     public AuthService() {
         this.userDao = new UserDaoImpl();
+        this.otpService = new OTPService();
+        this.userDaoImpl = new UserDaoImpl();
     }
 
     /**
@@ -31,6 +36,12 @@ public class AuthService {
 
         // Validate user data
         if (!validateUserData(user)) {
+            return false;
+        }
+
+        // Check if username already exists
+        if (isUsernameRegistered(user.getUsername())) {
+            System.out.println("❌ Username already taken! Please choose a different username.");
             return false;
         }
 
@@ -64,11 +75,17 @@ public class AuthService {
     /**
      * Authenticate user login
      * 
+     * @param username User's username
      * @param email    User's email
      * @param password User's password
      * @return User object if login successful, null otherwise
      */
-    public User loginUser(String email, String password) {
+    public User loginUser(String username, String email, String password) {
+        if (username == null || username.trim().isEmpty()) {
+            System.out.println("❌ Username cannot be empty");
+            return null;
+        }
+
         if (email == null || email.trim().isEmpty()) {
             System.out.println("❌ Email cannot be empty");
             return null;
@@ -80,19 +97,113 @@ public class AuthService {
         }
 
         try {
-            // Authenticate using email as username
-            User user = userDao.authenticate(email, password);
+            // Authenticate using username, email and password
+            User user = userDao.authenticateWithUsernameAndEmail(username, email, password);
             if (user != null) {
+                // Check if email is verified
+                if (!user.isVerified()) {
+                    System.out.println("⚠️  Your email is not verified. Please verify your email before logging in.");
+                    return null;
+                }
+
                 System.out.println("✅ Login successful! Welcome back, " + user.getFirstName() + "!");
                 return user;
             } else {
-                System.out.println("❌ Invalid email or password!");
+                System.out.println("❌ Invalid username, email or password!");
                 return null;
             }
         } catch (Exception e) {
             System.out.println("❌ Login failed: Invalid credentials");
             return null;
         }
+    }
+
+    /**
+     * Send verification email with OTP
+     * 
+     * @param email User's email address
+     * @return true if email sent successfully, false otherwise
+     */
+    public boolean sendVerificationEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            System.out.println("❌ Email cannot be empty");
+            return false;
+        }
+
+        // Check if user exists
+        User user = getUserByEmail(email);
+        if (user == null) {
+            System.out.println("❌ No account found with this email address");
+            return false;
+        }
+
+        // Check if already verified
+        if (user.isVerified()) {
+            System.out.println("ℹ️  This email is already verified!");
+            return false;
+        }
+
+        try {
+            // Generate OTP
+            String otp = otpService.generateOTP();
+
+            // Store OTP
+            otpService.storeOTP(email, otp);
+
+            // Send OTP via email
+            EmailService.sendOTP(email, otp);
+
+            System.out.println("✅ Verification code sent to " + email);
+            System.out.println("📧 Please check your email for the 6-digit code");
+            return true;
+
+        } catch (MessagingException e) {
+            System.out.println("❌ Failed to send verification email: " + e.getMessage());
+            return false;
+        } catch (Exception e) {
+            System.out.println("❌ Error sending verification email: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Verify email with OTP
+     * 
+     * @param email      User's email address
+     * @param enteredOTP OTP entered by user
+     * @return true if verification successful, false otherwise
+     */
+    public boolean verifyEmail(String email, String enteredOTP) {
+        if (email == null || email.trim().isEmpty()) {
+            System.out.println("❌ Email cannot be empty");
+            return false;
+        }
+
+        if (enteredOTP == null || enteredOTP.trim().isEmpty()) {
+            System.out.println("❌ OTP cannot be empty");
+            return false;
+        }
+
+        // Verify OTP
+        if (otpService.verifyOTP(email, enteredOTP)) {
+            // Update user's verified status in database
+            try {
+                boolean updated = userDaoImpl.updateVerified(email, true);
+                if (updated) {
+                    System.out.println("✅ Email verified successfully!");
+                    System.out.println("🎉 You can now log in to your account");
+                    return true;
+                } else {
+                    System.out.println("❌ Failed to update verification status");
+                    return false;
+                }
+            } catch (DatabaseOperationException e) {
+                System.out.println("❌ Database error: " + e.getMessage());
+                return false;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -112,12 +223,39 @@ public class AuthService {
     }
 
     /**
+     * Check if username is already registered
+     * 
+     * @param username Username to check
+     * @return true if username exists, false otherwise
+     */
+    public boolean isUsernameRegistered(String username) {
+        try {
+            var users = userDao.findByUsername(username);
+            return users != null && !users.isEmpty();
+        } catch (DatabaseOperationException e) {
+            System.err.println("Error checking username: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Validate user data before registration
      * 
      * @param user User to validate
      * @return true if valid, false otherwise
      */
     private boolean validateUserData(User user) {
+        // Validate username
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            System.out.println("❌ Username is required");
+            return false;
+        }
+
+        if (user.getUsername().length() < 3) {
+            System.out.println("❌ Username must be at least 3 characters long");
+            return false;
+        }
+
         // Validate first name
         if (user.getFirstName() == null || user.getFirstName().trim().isEmpty()) {
             System.out.println("❌ First name is required");

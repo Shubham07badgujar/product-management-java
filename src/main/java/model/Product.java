@@ -6,6 +6,7 @@ public class Product {
     private double price;
     private int quantity;
     private String category;
+    private int thresholdLimit; // Minimum stock level before low-stock alert
 
     public Product(int id, String name, double price, int quantity) {
         this.id = id;
@@ -13,6 +14,7 @@ public class Product {
         this.price = price;
         this.quantity = quantity;
         this.category = "General"; // Default category
+        this.thresholdLimit = 5; // Default threshold
     }
 
     public Product(int id, String name, double price, int quantity, String category) {
@@ -21,6 +23,16 @@ public class Product {
         this.price = price;
         this.quantity = quantity;
         this.category = category != null && !category.trim().isEmpty() ? category : "General";
+        this.thresholdLimit = 5; // Default threshold
+    }
+
+    public Product(int id, String name, double price, int quantity, String category, int thresholdLimit) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+        this.category = category != null && !category.trim().isEmpty() ? category : "General";
+        this.thresholdLimit = thresholdLimit > 0 ? thresholdLimit : 5;
     }
 
     public int getId() {
@@ -63,12 +75,28 @@ public class Product {
         this.category = category != null && !category.trim().isEmpty() ? category : "General";
     }
 
+    public int getThresholdLimit() {
+        return thresholdLimit;
+    }
+
+    public void setThresholdLimit(int thresholdLimit) {
+        this.thresholdLimit = thresholdLimit > 0 ? thresholdLimit : 5;
+    }
+
     public double getTotalValue() {
         return price * quantity;
     }
 
     public boolean isInStock() {
         return quantity > 0;
+    }
+
+    public boolean isLowStock() {
+        return quantity <= thresholdLimit;
+    }
+
+    public int getStockDeficit() {
+        return Math.max(0, thresholdLimit - quantity + 1);
     }
 
     @Override

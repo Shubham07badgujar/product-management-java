@@ -12,17 +12,17 @@ import util.DBConnection;
 
 public class ProductDaoImpl implements ProductDao {
     // Updated to use AUTO_INCREMENT - no need to provide ID manually
-    private static final String INSERT_PRODUCT = "INSERT INTO products (name, price, quantity, category) VALUES (?, ?, ?, ?)";
-    private static final String SELECT_PRODUCT_BY_ID = "SELECT id, name, price, quantity, category FROM products WHERE id = ?";
-    private static final String SELECT_ALL_PRODUCTS = "SELECT id, name, price, quantity, category FROM products ORDER BY id";
-    private static final String UPDATE_PRODUCT = "UPDATE products SET name = ?, price = ?, quantity = ?, category = ? WHERE id = ?";
+    private static final String INSERT_PRODUCT = "INSERT INTO products (name, price, quantity, category, threshold_limit) VALUES (?, ?, ?, ?, ?)";
+    private static final String SELECT_PRODUCT_BY_ID = "SELECT id, name, price, quantity, category, COALESCE(threshold_limit, 5) as threshold_limit FROM products WHERE id = ?";
+    private static final String SELECT_ALL_PRODUCTS = "SELECT id, name, price, quantity, category, COALESCE(threshold_limit, 5) as threshold_limit FROM products ORDER BY id";
+    private static final String UPDATE_PRODUCT = "UPDATE products SET name = ?, price = ?, quantity = ?, category = ?, threshold_limit = ? WHERE id = ?";
     private static final String UPDATE_PRODUCT_QUANTITY = "UPDATE products SET quantity = ? WHERE id = ?";
     private static final String DELETE_PRODUCT = "DELETE FROM products WHERE id = ?";
     private static final String EXISTS_BY_ID = "SELECT 1 FROM products WHERE id = ? LIMIT 1";
     private static final String COUNT_PRODUCTS = "SELECT COUNT(*) FROM products";
-    private static final String SELECT_PRODUCTS_BY_NAME = "SELECT id, name, price, quantity, category FROM products WHERE LOWER(name) LIKE LOWER(?) ORDER BY id";
-    private static final String SELECT_PRODUCTS_BY_CATEGORY = "SELECT id, name, price, quantity, category FROM products WHERE LOWER(category) LIKE LOWER(?) ORDER BY id";
-    private static final String SELECT_PRODUCTS_BY_PRICE_RANGE = "SELECT id, name, price, quantity, category FROM products WHERE price BETWEEN ? AND ? ORDER BY price, id";
+    private static final String SELECT_PRODUCTS_BY_NAME = "SELECT id, name, price, quantity, category, COALESCE(threshold_limit, 5) as threshold_limit FROM products WHERE LOWER(name) LIKE LOWER(?) ORDER BY id";
+    private static final String SELECT_PRODUCTS_BY_CATEGORY = "SELECT id, name, price, quantity, category, COALESCE(threshold_limit, 5) as threshold_limit FROM products WHERE LOWER(category) LIKE LOWER(?) ORDER BY id";
+    private static final String SELECT_PRODUCTS_BY_PRICE_RANGE = "SELECT id, name, price, quantity, category, COALESCE(threshold_limit, 5) as threshold_limit FROM products WHERE price BETWEEN ? AND ? ORDER BY price, id";
 
     @Override
     public boolean create(Product product) {
@@ -44,6 +44,7 @@ public class ProductDaoImpl implements ProductDao {
             statement.setDouble(2, product.getPrice());
             statement.setInt(3, product.getQuantity());
             statement.setString(4, product.getCategory());
+            statement.setInt(5, product.getThresholdLimit());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -148,7 +149,8 @@ public class ProductDaoImpl implements ProductDao {
             statement.setDouble(2, product.getPrice());
             statement.setInt(3, product.getQuantity());
             statement.setString(4, product.getCategory());
-            statement.setInt(5, product.getId());
+            statement.setInt(5, product.getThresholdLimit());
+            statement.setInt(6, product.getId());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -285,8 +287,9 @@ public class ProductDaoImpl implements ProductDao {
         double price = resultSet.getDouble("price");
         int quantity = resultSet.getInt("quantity");
         String category = resultSet.getString("category");
+        int thresholdLimit = resultSet.getInt("threshold_limit");
 
-        return new Product(id, name, price, quantity, category);
+        return new Product(id, name, price, quantity, category, thresholdLimit);
     }
 
     private void closeResources(Connection connection, PreparedStatement statement, ResultSet resultSet) {

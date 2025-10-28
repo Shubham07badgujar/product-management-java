@@ -14,18 +14,20 @@ import model.User;
 import util.DBConnection;
 
 public class UserDaoImpl implements UserDao {
-    private static final String INSERT_USER = "INSERT INTO users (id, username, email, first_name, last_name, password, phone_number, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    private static final String SELECT_USER_BY_ID = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users WHERE id = ?";
-    private static final String SELECT_ALL_USERS = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users ORDER BY id";
-    private static final String UPDATE_USER = "UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, password = ?, phone_number = ?, role = ? WHERE id = ?";
+    private static final String INSERT_USER = "INSERT INTO users (id, username, email, first_name, last_name, password, phone_number, role, verified) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String SELECT_USER_BY_ID = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE id = ?";
+    private static final String SELECT_ALL_USERS = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users ORDER BY id";
+    private static final String UPDATE_USER = "UPDATE users SET username = ?, email = ?, first_name = ?, last_name = ?, password = ?, phone_number = ?, role = ?, verified = ? WHERE id = ?";
     private static final String DELETE_USER = "DELETE FROM users WHERE id = ?";
     private static final String EXISTS_BY_ID = "SELECT 1 FROM users WHERE id = ? LIMIT 1";
     private static final String COUNT_USERS = "SELECT COUNT(*) FROM users";
-    private static final String SELECT_USERS_BY_USERNAME = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users WHERE LOWER(username) LIKE LOWER(?) ORDER BY id";
-    private static final String SELECT_USERS_BY_EMAIL = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users WHERE LOWER(email) LIKE LOWER(?) ORDER BY id";
-    private static final String SELECT_USER_BY_USERNAME_AND_EMAIL = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users WHERE LOWER(username) = LOWER(?) AND LOWER(email) = LOWER(?)";
-    private static final String AUTHENTICATE_USER = "SELECT id, username, email, first_name, last_name, password, phone_number, role FROM users WHERE LOWER(email) = LOWER(?) AND password = ?";
+    private static final String SELECT_USERS_BY_USERNAME = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE LOWER(username) LIKE LOWER(?) ORDER BY id";
+    private static final String SELECT_USERS_BY_EMAIL = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE LOWER(email) LIKE LOWER(?) ORDER BY id";
+    private static final String SELECT_USER_BY_USERNAME_AND_EMAIL = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE LOWER(username) = LOWER(?) AND LOWER(email) = LOWER(?)";
+    private static final String AUTHENTICATE_USER = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE LOWER(email) = LOWER(?) AND password = ?";
+    private static final String AUTHENTICATE_USER_WITH_USERNAME_EMAIL = "SELECT id, username, email, first_name, last_name, password, phone_number, role, verified FROM users WHERE LOWER(username) = LOWER(?) AND LOWER(email) = LOWER(?) AND password = ?";
     private static final String UPDATE_PASSWORD = "UPDATE users SET password = ? WHERE id = ?";
+    private static final String UPDATE_VERIFIED = "UPDATE users SET verified = ? WHERE email = ?";
 
     @Override
     public boolean create(User user) throws DatabaseOperationException, UserValidationException {
@@ -48,6 +50,7 @@ public class UserDaoImpl implements UserDao {
             statement.setString(6, user.getPassword());
             statement.setString(7, user.getPhoneNumber());
             statement.setString(8, user.getRole());
+            statement.setBoolean(9, user.isVerified());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -141,7 +144,8 @@ public class UserDaoImpl implements UserDao {
             statement.setString(5, user.getPassword());
             statement.setString(6, user.getPhoneNumber());
             statement.setString(7, user.getRole());
-            statement.setInt(8, user.getId());
+            statement.setBoolean(8, user.isVerified());
+            statement.setInt(9, user.getId());
 
             int rowsAffected = statement.executeUpdate();
 
@@ -268,7 +272,8 @@ public class UserDaoImpl implements UserDao {
                         resultSet.getString("last_name"),
                         resultSet.getString("password"),
                         resultSet.getString("phone_number"),
-                        resultSet.getString("role"));
+                        resultSet.getString("role"),
+                        resultSet.getBoolean("verified"));
                 users.add(user);
             }
 
@@ -307,7 +312,8 @@ public class UserDaoImpl implements UserDao {
                         resultSet.getString("last_name"),
                         resultSet.getString("password"),
                         resultSet.getString("phone_number"),
-                        resultSet.getString("role"));
+                        resultSet.getString("role"),
+                        resultSet.getBoolean("verified"));
                 users.add(user);
             }
 
@@ -396,6 +402,35 @@ public class UserDaoImpl implements UserDao {
     }
 
     @Override
+    public User authenticateWithUsernameAndEmail(String username, String email, String password)
+            throws UserNotFoundException, DatabaseOperationException {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
+
+        try {
+            connection = DBConnection.getConnection();
+            statement = connection.prepareStatement(AUTHENTICATE_USER_WITH_USERNAME_EMAIL);
+            statement.setString(1, username);
+            statement.setString(2, email);
+            statement.setString(3, password);
+            resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                return mapResultSetToUser(resultSet);
+            } else {
+                throw new UserNotFoundException("Invalid username, email or password");
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error authenticating user: " + e.getMessage());
+            throw new DatabaseOperationException("Authentication failed", e.getMessage());
+        } finally {
+            closeResources(connection, statement, resultSet);
+        }
+    }
+
+    @Override
     public boolean updatePassword(int userId, String newPassword)
             throws UserNotFoundException, DatabaseOperationException, UserValidationException {
         if (newPassword == null || newPassword.trim().length() < 6) {
@@ -445,6 +480,46 @@ public class UserDaoImpl implements UserDao {
                 resultSet.getString("last_name"),
                 resultSet.getString("password"),
                 resultSet.getString("phone_number"),
-                resultSet.getString("role"));
+                resultSet.getString("role"),
+                resultSet.getBoolean("verified"));
+    }
+
+    /**
+     * Update user's email verification status
+     * 
+     * @param email    User's email
+     * @param verified New verification status
+     * @return true if update successful, false otherwise
+     * @throws DatabaseOperationException
+     */
+    public boolean updateVerified(String email, boolean verified) throws DatabaseOperationException {
+        Connection connection = null;
+        PreparedStatement statement = null;
+
+        try {
+            connection = DBConnection.getConnection();
+            statement = connection.prepareStatement(UPDATE_VERIFIED);
+            statement.setBoolean(1, verified);
+            statement.setString(2, email);
+
+            int rowsAffected = statement.executeUpdate();
+
+            if (rowsAffected > 0) {
+                DBConnection.commitTransaction(connection);
+                return true;
+            } else {
+                DBConnection.rollbackTransaction(connection);
+                return false;
+            }
+
+        } catch (SQLException e) {
+            if (connection != null) {
+                DBConnection.rollbackTransaction(connection);
+            }
+            System.err.println("Error updating verification status: " + e.getMessage());
+            return false;
+        } finally {
+            closeResources(connection, statement, null);
+        }
     }
 }

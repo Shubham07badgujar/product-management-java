@@ -9,7 +9,9 @@ import exception.InvalidInputException;
 import model.Product;
 import model.User;
 import service.AuthService;
+import service.EmailService;
 import service.ProductService;
+import service.StockAlertService;
 import util.CSVHelper;
 import util.DBConnection;
 import util.PaginationUtil;
@@ -22,6 +24,7 @@ public class MainWithAuth {
     private static final ProductService productService = new ProductService();
     private static final AuthService authService = new AuthService();
     private static final CSVHelper csvHelper = new CSVHelper();
+    private static final StockAlertService stockAlertService = new StockAlertService();
     private static final Scanner scanner = new Scanner(System.in);
     private static User currentUser = null;
 
@@ -62,9 +65,10 @@ public class MainWithAuth {
     private static void showAuthMenu() {
         while (true) {
             System.out.println("\n🔐 ============ WELCOME ============ 🔐");
-            System.out.println("1️⃣  Register");
-            System.out.println("2️⃣  Login");
-            System.out.println("0️⃣  Exit");
+            System.out.println("1️⃣  Login");
+            System.out.println("2️⃣  Register");
+            System.out.println("3️⃣  Verify Mail");
+            System.out.println("4️⃣  Exit");
             System.out.println("=====================================");
             System.out.print("Choose an option: ");
 
@@ -72,9 +76,6 @@ public class MainWithAuth {
 
             switch (choice) {
                 case "1":
-                    registerUser();
-                    break;
-                case "2":
                     loginUser();
                     if (currentUser != null) {
                         // Show appropriate menu based on role
@@ -86,7 +87,13 @@ public class MainWithAuth {
                         currentUser = null; // Logout after menu exit
                     }
                     break;
-                case "0":
+                case "2":
+                    registerUser();
+                    break;
+                case "3":
+                    verifyEmail();
+                    break;
+                case "4":
                     System.out.println("👋 Goodbye! Thank you for using Product Management System!");
                     return;
                 default:
@@ -102,6 +109,9 @@ public class MainWithAuth {
         System.out.println("\n📝 ========== USER REGISTRATION ========== 📝");
 
         try {
+            System.out.print("👤 Username: ");
+            String username = scanner.nextLine().trim();
+
             System.out.print("👤 First Name: ");
             String firstName = scanner.nextLine().trim();
 
@@ -141,11 +151,12 @@ public class MainWithAuth {
                 role = "User";
             }
 
-            User newUser = new User(firstName, lastName, email, phoneNumber, password, role);
+            User newUser = new User(username, firstName, lastName, email, phoneNumber, password, role);
 
             if (authService.registerUser(newUser)) {
                 System.out.println("\n🎉 Registration completed successfully!");
-                System.out.println("📧 You can now login with your email: " + email);
+                System.out.println("� Username: " + username);
+                System.out.println("📧 Email: " + email);
             }
 
         } catch (Exception e) {
@@ -160,13 +171,16 @@ public class MainWithAuth {
         System.out.println("\n🔐 ========== USER LOGIN ========== 🔐");
 
         try {
-            System.out.print("📧 Email: ");
+            System.out.print("� Username: ");
+            String username = scanner.nextLine().trim();
+
+            System.out.print("�📧 Email: ");
             String email = scanner.nextLine().trim();
 
             System.out.print("🔒 Password: ");
             String password = scanner.nextLine().trim();
 
-            currentUser = authService.loginUser(email, password);
+            currentUser = authService.loginUser(username, email, password);
 
             if (currentUser != null) {
                 System.out.println("\n✨ Login successful!");
@@ -181,6 +195,82 @@ public class MainWithAuth {
     }
 
     /**
+     * Handle email verification with OTP
+     */
+    private static void verifyEmail() {
+        System.out.println("\n📧 ========== VERIFY EMAIL ========== 📧");
+
+        try {
+            System.out.print("📧 Enter your registered email address: ");
+            String email = scanner.nextLine().trim();
+
+            if (email.isEmpty()) {
+                System.out.println("❌ Email cannot be empty!");
+                return;
+            }
+
+            // Send OTP to email
+            if (authService.sendVerificationEmail(email)) {
+                // OTP verification loop with resend option
+                boolean verified = false;
+                while (!verified) {
+                    System.out.println("\n🔐 ========== OTP VERIFICATION ========== 🔐");
+                    System.out.println("1️⃣  Enter OTP");
+                    System.out.println("2️⃣  Resend OTP");
+                    System.out.println("0️⃣  Cancel");
+                    System.out.println("==========================================");
+                    System.out.print("Choose an option: ");
+
+                    String choice = scanner.nextLine().trim();
+
+                    switch (choice) {
+                        case "1":
+                            // Enter OTP
+                            System.out.print("\n🔢 Enter the 6-digit OTP sent to your email: ");
+                            String otp = scanner.nextLine().trim();
+
+                            if (otp.isEmpty()) {
+                                System.out.println("❌ OTP cannot be empty!");
+                                break;
+                            }
+
+                            // Verify OTP
+                            if (authService.verifyEmail(email, otp)) {
+                                System.out.println("✅ Email verification completed successfully!");
+                                verified = true;
+                            } else {
+                                System.out.println("❌ Invalid or expired OTP. Please try again.");
+                            }
+                            break;
+
+                        case "2":
+                            // Resend OTP
+                            System.out.println("\n📤 Resending OTP...");
+                            if (authService.sendVerificationEmail(email)) {
+                                System.out.println("✅ A new OTP has been sent to your email.");
+                                System.out.println("📧 Please check your email for the new 6-digit code");
+                            } else {
+                                System.out.println("❌ Failed to resend OTP. Please try again later.");
+                            }
+                            break;
+
+                        case "0":
+                            // Cancel verification
+                            System.out.println("🔙 Email verification cancelled.");
+                            return;
+
+                        default:
+                            System.out.println("❌ Invalid choice! Please try again.");
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println("❌ Verification error: " + e.getMessage());
+        }
+    }
+
+    /**
      * Show User Menu (Limited Access)
      */
     private static void showUserMenu() {
@@ -189,7 +279,7 @@ public class MainWithAuth {
             System.out.println("1. 👀 View All Products");
             System.out.println("2. 🔍 Search Product");
             System.out.println("3. 💰 Filter Products by Price Range");
-            System.out.println("0. 🚪 Exit");
+            System.out.println("0. � Logout");
             System.out.println("=======================================");
             System.out.print("Choose an option: ");
 
@@ -206,7 +296,8 @@ public class MainWithAuth {
                     filterByPriceRange();
                     break;
                 case "0":
-                    System.out.println("👋 Logging out...");
+                    System.out.println("\n✅ You have been logged out successfully.");
+                    System.out.println("👋 Goodbye, " + currentUser.getFirstName() + "!");
                     return;
                 default:
                     System.out.println("❌ Invalid choice! Please try again.");
@@ -226,8 +317,10 @@ public class MainWithAuth {
             System.out.println("4. ✏️  Update Product");
             System.out.println("5. 🗑️  Delete Product");
             System.out.println("6. 💰 Filter by Price Range");
-            System.out.println("7. 💾 Save to CSV");
-            System.out.println("0. 🚪 Exit");
+            System.out.println("7. 📊 Generate CSV Report and Send via Email");
+            System.out.println("8. ⚠️  Check Low Stock & Send Alert");
+            System.out.println("9. 📈 View Stock Status Report");
+            System.out.println("0. 🔓 Logout");
             System.out.println("=========================================");
             System.out.print("Choose an option: ");
 
@@ -253,10 +346,17 @@ public class MainWithAuth {
                     filterByPriceRange();
                     break;
                 case "7":
-                    saveToCSV();
+                    generateAndEmailCSVReport();
+                    break;
+                case "8":
+                    checkLowStockAndAlert();
+                    break;
+                case "9":
+                    viewStockStatusReport();
                     break;
                 case "0":
-                    System.out.println("👋 Logging out...");
+                    System.out.println("\n✅ You have been logged out successfully.");
+                    System.out.println("👋 Goodbye, " + currentUser.getFirstName() + "!");
                     return;
                 default:
                     System.out.println("❌ Invalid choice! Please try again.");
@@ -841,6 +941,350 @@ public class MainWithAuth {
 
         } catch (Exception e) {
             System.err.println("❌ Error saving to CSV: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Generate CSV Report and Send via Email
+     * Admin can send the report to their own email and optionally to another email
+     */
+    private static void generateAndEmailCSVReport() {
+        System.out.println("\n📧 ========== GENERATE CSV REPORT AND SEND VIA EMAIL ========== 📧");
+
+        try {
+            // Check if email is configured
+            String mailUser = System.getenv("MAIL_USER");
+            String mailPass = System.getenv("MAIL_PASS");
+
+            if (mailUser == null || mailPass == null || mailUser.isEmpty() || mailPass.isEmpty()) {
+                System.out.println("❌ Email credentials not configured!");
+                System.out.println("💡 Please set MAIL_USER and MAIL_PASS environment variables.");
+                System.out.println("📄 See EMAIL_SETUP_GUIDE.md for instructions.");
+                return;
+            }
+
+            // Step 1: Fetch all products from database
+            System.out.println("\n📦 Step 1/4: Fetching products from database...");
+            List<Product> products = productService.getAllProducts();
+
+            if (products == null || products.isEmpty()) {
+                System.out.println("❌ No products found in the database. Cannot generate report.");
+                return;
+            }
+
+            System.out.println("✅ Found " + products.size() + " products");
+
+            // Step 2: Generate CSV file with timestamp
+            System.out.println("\n📝 Step 2/4: Generating CSV report...");
+            String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+            String fileName = "product_report_" + timestamp + ".csv";
+            String reportPath = "reports/" + fileName;
+
+            // Create reports directory if it doesn't exist
+            java.io.File reportsDir = new java.io.File("reports");
+            if (!reportsDir.exists()) {
+                reportsDir.mkdirs();
+            }
+
+            // Write CSV file
+            try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.File(reportPath))) {
+                // Write CSV header
+                writer.println("Product ID,Name,Price,Quantity,Category");
+
+                // Write product data
+                for (Product product : products) {
+                    writer.printf("%d,\"%s\",%.2f,%d,\"%s\"%n",
+                            product.getId(),
+                            product.getName().replace("\"", "\"\""), // Escape quotes
+                            product.getPrice(),
+                            product.getQuantity(),
+                            product.getCategory().replace("\"", "\"\"")); // Escape quotes
+                }
+
+                System.out.println("✅ CSV report generated: " + reportPath);
+            }
+
+            // Step 3: Send email to current admin
+            System.out.println("\n📧 Step 3/4: Sending email to admin...");
+
+            if (currentUser == null || currentUser.getEmail() == null) {
+                System.out.println("❌ Current user email not available!");
+                return;
+            }
+
+            String adminEmail = currentUser.getEmail();
+            String subject = "Product Management Report - " + timestamp;
+            String body = "Dear " + currentUser.getFirstName() + " " + currentUser.getLastName() + ",\n\n" +
+                    "Product Report generated successfully on " +
+                    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()) + ".\n\n" +
+                    "Total Products: " + products.size() + "\n\n" +
+                    "Please find the attached CSV file with complete product details.\n\n" +
+                    "Summary:\n" +
+                    "- Report Name: " + fileName + "\n" +
+                    "- Total Products: " + products.size() + "\n" +
+                    "- Generated By: " + currentUser.getUsername() + "\n\n" +
+                    "Best regards,\n" +
+                    "Product Management System";
+
+            try {
+                EmailService.sendReport(adminEmail, subject, body, reportPath);
+                System.out.println("✅ Email sent successfully to: " + adminEmail);
+            } catch (Exception e) {
+                System.out.println("❌ Failed to send email to admin: " + e.getMessage());
+                System.out.println("💡 CSV file is still saved locally at: " + reportPath);
+            }
+
+            // Step 4: Ask if admin wants to send to another email
+            System.out.println("\n📤 Step 4/4: Send to another email address?");
+            System.out.print("Would you like to send this report to another email? (yes/no): ");
+            String sendToAnother = scanner.nextLine().trim().toLowerCase();
+
+            if (sendToAnother.equals("yes") || sendToAnother.equals("y")) {
+                System.out.print("📧 Enter recipient email address: ");
+                String recipientEmail = scanner.nextLine().trim();
+
+                if (recipientEmail.isEmpty()) {
+                    System.out.println("❌ Email address cannot be empty!");
+                } else if (!isValidEmailFormat(recipientEmail)) {
+                    System.out.println("❌ Invalid email format!");
+                } else {
+                    try {
+                        EmailService.sendReport(recipientEmail, subject, body, reportPath);
+                        System.out.println("✅ Email sent successfully to: " + recipientEmail);
+                    } catch (Exception e) {
+                        System.out.println("❌ Failed to send email to " + recipientEmail + ": " + e.getMessage());
+                    }
+                }
+            }
+
+            // Summary
+            System.out.println("\n╔══════════════════════════════════════════════════════════════╗");
+            System.out.println("║              📊 REPORT GENERATION SUMMARY                    ║");
+            System.out.println("╚══════════════════════════════════════════════════════════════╝");
+            System.out.println("✅ Report generated successfully!");
+            System.out.println("📄 File: " + reportPath);
+            System.out.println("📊 Total Products: " + products.size());
+            System.out.println("📧 Sent to: " + adminEmail);
+            System.out.println("💾 Report saved locally for your records");
+
+        } catch (Exception e) {
+            System.out.println("\n❌ Error generating or sending report: " + e.getMessage());
+            System.out.println("💡 Please check your database connection and email configuration.");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Validate email format
+     */
+    private static boolean isValidEmailFormat(String email) {
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    }
+
+    /**
+     * Check Low Stock and Send Alert (Option 8)
+     * Manually trigger low-stock check and optionally send email alert
+     */
+    private static void checkLowStockAndAlert() {
+        System.out.println("\n⚠️  ========== LOW STOCK MONITORING ========== ⚠️");
+
+        try {
+            // Step 1: Check for low-stock products
+            System.out.println("\n🔍 Step 1/3: Checking inventory for low-stock products...");
+            List<Product> lowStockProducts = stockAlertService.checkLowStock();
+
+            if (lowStockProducts == null || lowStockProducts.isEmpty()) {
+                System.out.println("\n✅ Great news! All products are sufficiently stocked.");
+                System.out.println("📊 No items require restocking at this time.");
+                return;
+            }
+
+            // Step 2: Display low-stock products
+            System.out.println("\n⚠️  Step 2/3: Low-Stock Products Found!");
+            System.out.println("═══════════════════════════════════════════════════════════");
+            System.out.println(String.format("Found %d product(s) with low stock:\n", lowStockProducts.size()));
+
+            for (int i = 0; i < lowStockProducts.size(); i++) {
+                Product product = lowStockProducts.get(i);
+                System.out.printf("%d. 📦 %s (ID: %d)\n", (i + 1), product.getName(), product.getId());
+                System.out.printf("   • Category: %s\n", product.getCategory());
+                System.out.printf("   • Current Stock: %d units\n", product.getQuantity());
+                System.out.printf("   • Threshold: %d units\n", product.getThresholdLimit());
+                System.out.printf("   • Status: %s\n",
+                        product.getQuantity() == 0 ? "🔴 OUT OF STOCK" : "⚠️  LOW STOCK");
+
+                if (product.getQuantity() < product.getThresholdLimit()) {
+                    System.out.printf("   • Recommended Restock: %d units\n", product.getStockDeficit());
+                }
+                System.out.println();
+            }
+
+            System.out.println("═══════════════════════════════════════════════════════════");
+
+            // Step 3: Ask if admin wants to send email alert
+            System.out.println("\n📧 Step 3/3: Send Email Alert?");
+            System.out.print("Would you like to send a low-stock alert email? (yes/no): ");
+            String sendEmail = scanner.nextLine().trim().toLowerCase();
+
+            if (sendEmail.equals("yes") || sendEmail.equals("y")) {
+                // Check email configuration
+                String mailUser = System.getenv("MAIL_USER");
+                String mailPass = System.getenv("MAIL_PASS");
+
+                if (mailUser == null || mailPass == null || mailUser.isEmpty() || mailPass.isEmpty()) {
+                    System.out.println("\n❌ Email credentials not configured!");
+                    System.out.println("💡 Please set MAIL_USER and MAIL_PASS environment variables.");
+                    return;
+                }
+
+                // Get admin email
+                String adminEmail = currentUser.getEmail();
+
+                if (adminEmail == null || adminEmail.trim().isEmpty()) {
+                    System.out.print("📧 Enter admin email address: ");
+                    adminEmail = scanner.nextLine().trim();
+
+                    if (adminEmail.isEmpty() || !isValidEmailFormat(adminEmail)) {
+                        System.out.println("❌ Invalid email address!");
+                        return;
+                    }
+                }
+
+                // Send alert
+                System.out.println("\n📤 Sending low-stock alert email...");
+                boolean sent = stockAlertService.sendLowStockAlert(lowStockProducts, adminEmail);
+
+                if (sent) {
+                    System.out.println("\n✅ Low-stock alert email sent successfully!");
+                    System.out.println("📧 Sent to: " + adminEmail);
+                    System.out.println("💾 Alert log saved for your records");
+                } else {
+                    System.out.println("\n❌ Failed to send alert email.");
+                    System.out.println("💡 Please check your email configuration and try again.");
+                }
+            } else {
+                System.out.println("\n📋 Alert display completed. No email sent.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("\n❌ Error during low-stock check: " + e.getMessage());
+            System.out.println("💡 Please check your database connection and try again.");
+        }
+    }
+
+    /**
+     * View Stock Status Report (Option 9)
+     * Display comprehensive inventory status report
+     */
+    private static void viewStockStatusReport() {
+        System.out.println("\n📈 ========== STOCK STATUS REPORT ========== 📈");
+
+        try {
+            String report = stockAlertService.getStockStatusReport();
+            System.out.println(report);
+
+            // Additional options
+            System.out.println("\n📊 Report Options:");
+            System.out.println("1. 🔄 Refresh Report");
+            System.out.println("2. 📧 Email This Report");
+            System.out.println("3. ⚙️  Configure Automated Monitoring");
+            System.out.println("0. 🔙 Back to Menu");
+            System.out.print("Choose an option: ");
+
+            String choice = scanner.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    viewStockStatusReport(); // Recursive call to refresh
+                    break;
+
+                case "2":
+                    emailStockReport(report);
+                    break;
+
+                case "3":
+                    configureAutomatedMonitoring();
+                    break;
+
+                case "0":
+                    return;
+
+                default:
+                    System.out.println("❌ Invalid choice!");
+            }
+
+        } catch (Exception e) {
+            System.out.println("\n❌ Error generating stock status report: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Email stock status report
+     */
+    private static void emailStockReport(String report) {
+        try {
+            System.out.print("\n📧 Enter recipient email address: ");
+            String recipientEmail = scanner.nextLine().trim();
+
+            if (recipientEmail.isEmpty() || !isValidEmailFormat(recipientEmail)) {
+                System.out.println("❌ Invalid email address!");
+                return;
+            }
+
+            String subject = "Inventory Stock Status Report - " +
+                    new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+
+            EmailService.sendReport(recipientEmail, subject, report, null);
+            System.out.println("✅ Report sent successfully to: " + recipientEmail);
+
+        } catch (Exception e) {
+            System.out.println("❌ Failed to send report: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Configure automated monitoring
+     */
+    private static void configureAutomatedMonitoring() {
+        System.out.println("\n⚙️  ========== AUTOMATED MONITORING SETUP ========== ⚙️");
+        System.out.println("\nℹ️  Automated monitoring checks inventory daily and sends alerts");
+        System.out.println("   when products fall below their threshold levels.");
+
+        if (stockAlertService.isMonitoringActive()) {
+            System.out.println("\n🟢 Status: ACTIVE");
+            System.out.print("\nWould you like to stop automated monitoring? (yes/no): ");
+            String stop = scanner.nextLine().trim().toLowerCase();
+
+            if (stop.equals("yes") || stop.equals("y")) {
+                stockAlertService.stopAutomatedMonitoring();
+                System.out.println("✅ Automated monitoring stopped.");
+            }
+        } else {
+            System.out.println("\n🔴 Status: INACTIVE");
+            System.out.print("\nWould you like to start automated monitoring? (yes/no): ");
+            String start = scanner.nextLine().trim().toLowerCase();
+
+            if (start.equals("yes") || start.equals("y")) {
+                // Get admin email
+                String adminEmail = currentUser.getEmail();
+
+                if (adminEmail == null || adminEmail.trim().isEmpty()) {
+                    System.out.print("📧 Enter admin email for alerts: ");
+                    adminEmail = scanner.nextLine().trim();
+                }
+
+                if (!isValidEmailFormat(adminEmail)) {
+                    System.out.println("❌ Invalid email address!");
+                    return;
+                }
+
+                // Start monitoring
+                stockAlertService.startAutomatedMonitoring(adminEmail);
+                System.out.println("\n✅ Automated monitoring started successfully!");
+                System.out.println("📧 Alerts will be sent to: " + adminEmail);
+                System.out.println("⏰ Schedule: Every 24 hours");
+                System.out.println("💡 The system will check stock levels daily and send alerts automatically.");
+            }
         }
     }
 }

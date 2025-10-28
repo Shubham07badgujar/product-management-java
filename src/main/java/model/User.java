@@ -9,6 +9,7 @@ public class User {
     private String phoneNumber;
     private String password;
     private String role; // "Admin" or "User"
+    private boolean verified; // Email verification status
 
     // Constructor for registration (without ID)
     public User(String firstName, String lastName, String email, String phoneNumber, String password, String role) {
@@ -20,6 +21,21 @@ public class User {
         this.phoneNumber = phoneNumber != null ? phoneNumber : "";
         this.password = password != null ? password : "";
         this.role = role != null ? role : "User";
+        this.verified = false; // Default to unverified
+    }
+
+    // Constructor for registration with custom username (without ID)
+    public User(String username, String firstName, String lastName, String email, String phoneNumber, String password,
+            String role) {
+        this.id = 0; // Will be auto-generated
+        this.username = username != null ? username : email; // Use provided username or email as fallback
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber != null ? phoneNumber : "";
+        this.password = password != null ? password : "";
+        this.role = role != null ? role : "User";
+        this.verified = false; // Default to unverified
     }
 
     public User(int id, String username, String email, String firstName, String lastName, String password) {
@@ -31,6 +47,7 @@ public class User {
         this.phoneNumber = "";
         this.password = password != null ? password : "";
         this.role = "User"; // Default role
+        this.verified = false; // Default to unverified
     }
 
     public User(int id, String username, String email, String firstName, String lastName, String password,
@@ -43,6 +60,7 @@ public class User {
         this.phoneNumber = phoneNumber != null ? phoneNumber : "";
         this.password = password != null ? password : "";
         this.role = "User"; // Default role
+        this.verified = false; // Default to unverified
     }
 
     // Constructor with role
@@ -56,6 +74,21 @@ public class User {
         this.phoneNumber = phoneNumber != null ? phoneNumber : "";
         this.password = password != null ? password : "";
         this.role = role != null ? role : "User";
+        this.verified = false; // Default to unverified
+    }
+
+    // Constructor with role and verified status
+    public User(int id, String username, String email, String firstName, String lastName, String password,
+            String phoneNumber, String role, boolean verified) {
+        this.id = id;
+        this.username = username;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber != null ? phoneNumber : "";
+        this.password = password != null ? password : "";
+        this.role = role != null ? role : "User";
+        this.verified = verified;
     }
 
     // Getters and Setters
@@ -121,6 +154,14 @@ public class User {
 
     public void setRole(String role) {
         this.role = role != null ? role : "User";
+    }
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
     }
 
     public boolean isAdmin() {

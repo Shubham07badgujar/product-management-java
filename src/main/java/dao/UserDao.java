@@ -30,6 +30,9 @@ public interface UserDao {
 
     User authenticate(String username, String password) throws UserNotFoundException, DatabaseOperationException;
 
+    User authenticateWithUsernameAndEmail(String username, String email, String password)
+            throws UserNotFoundException, DatabaseOperationException;
+
     boolean updatePassword(int userId, String newPassword)
             throws UserNotFoundException, DatabaseOperationException, UserValidationException;
 }

@@ -76,6 +76,7 @@ Thumbs.db
 
 # Sensitive configuration files
 database.properties
+.env
 
 # Reports and temporary files
 reports/*.pdf
